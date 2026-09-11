@@ -1,0 +1,1175 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rebus Desk — picture puzzle video maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#0E2830;
+    --panel:#143740;
+    --panel-2:#1A454F;
+    --line:#25616F;
+    --ink:#E8F1EE;
+    --muted:#8FB0B7;
+    --amber:#FFC24B;
+    --coral:#FF6B54;
+    --mint:#6FD9AE;
+    --cream:#F1EBDD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--board);
+    color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--amber)}
+  ::selection{background:var(--amber);color:#0E2830}
+
+  .wrap{max-width:1220px;margin:0 auto;padding:28px 20px 90px}
+
+  header.masthead{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;
+    padding-bottom:18px;margin-bottom:26px;
+    border-bottom:1px solid var(--line);
+  }
+  .logo{font-family:Anton,Impact,sans-serif;font-size:40px;letter-spacing:.5px;line-height:.95;margin:0}
+  .logo span{color:var(--amber)}
+  .tagline{color:var(--muted);max-width:52ch;margin:6px 0 0}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 424px;gap:26px;align-items:start}
+  @media (max-width:1000px){
+    .layout{grid-template-columns:1fr}
+    .stage{order:-1;position:static !important}
+  }
+
+  /* ---- panels ---- */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
+  .panel h2{font-size:17px;margin:0 0 4px;font-weight:600;letter-spacing:.1px}
+  .panel .note{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type=text],textarea,select{
+    width:100%;background:#0C232B;border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:10px 12px;font:inherit;font-size:14px;
+  }
+  input[type=text]:focus,textarea:focus,select:focus,button:focus-visible,input[type=range]:focus-visible{
+    outline:2px solid var(--amber);outline-offset:2px;
+  }
+  textarea{resize:vertical;min-height:64px}
+
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid transparent;padding:10px 16px;font-weight:600}
+  .btn-primary{background:var(--amber);color:#12303A}
+  .btn-primary:hover{background:#FFD275}
+  .btn-record{background:var(--coral);color:#2A0B05;width:100%;padding:14px;font-size:16px}
+  .btn-record:hover{background:#FF8770}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--amber);color:var(--amber)}
+  .btn-mini{padding:5px 9px;font-size:12px;font-weight:500;border-radius:7px}
+  button[disabled]{opacity:.45;cursor:not-allowed}
+
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .row > .grow{flex:1 1 220px;min-width:0}
+
+  /* ---- puzzle deck ---- */
+  .deck-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .count{color:var(--muted);font-size:13px}
+  .puzzle{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .puzzle-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+  .puzzle-top .idx{
+    font-family:Anton,sans-serif;font-size:19px;color:var(--amber);
+    width:26px;text-align:center;flex:none;
+  }
+  .puzzle-top input{font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  .parts{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+  .part{
+    width:118px;background:#0C232B;border:1px solid var(--line);
+    border-radius:10px;padding:8px;text-align:center;position:relative;
+  }
+  .part .glyph{
+    width:100%;height:62px;display:flex;align-items:center;justify-content:center;
+    font-size:38px;background:var(--cream);border-radius:6px;margin-bottom:6px;overflow:hidden;
+  }
+  .part .glyph img{width:100%;height:100%;object-fit:cover}
+  .part input{padding:5px 6px;font-size:12.5px;text-align:center;text-transform:uppercase}
+  .part .tools{display:flex;gap:4px;margin-top:6px}
+  .part .tools button{flex:1;padding:4px;font-size:11px;font-weight:500;border-radius:6px;background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .part .tools button:hover{color:var(--amber);border-color:var(--amber)}
+  .plus{align-self:center;font-family:Anton,sans-serif;font-size:22px;color:var(--muted);padding-top:24px}
+  .add-part{
+    width:52px;height:118px;border:1px dashed var(--line);background:transparent;color:var(--muted);
+    border-radius:10px;font-size:20px;font-weight:400;
+  }
+  .add-part:hover{border-color:var(--amber);color:var(--amber)}
+  .puzzle-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
+  .verdict{font-size:12.5px;color:var(--muted)}
+  .verdict.bad{color:var(--coral)}
+  .verdict.good{color:var(--mint)}
+
+  .empty{
+    border:1px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--muted);
+  }
+
+  /* ---- sliders ---- */
+  .field{margin-bottom:16px}
+  .slider-head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
+  .slider-head b{color:var(--ink);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--amber);height:22px}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    background:#0C232B;border:1px solid var(--line);color:var(--muted);
+    padding:8px 13px;border-radius:999px;font-size:13px;font-weight:500;
+  }
+  .chip[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#12303A}
+
+  /* ---- stage ---- */
+  .stage{position:sticky;top:20px}
+  .screen{
+    background:#081C22;border:1px solid var(--line);border-radius:20px;padding:14px;
+  }
+  canvas{
+    display:block;width:100%;height:auto;border-radius:12px;
+    background:#081C22;max-height:min(62vh,660px);margin:0 auto;
+  }
+  .transport{display:flex;align-items:center;gap:10px;margin-top:14px}
+  .transport .time{
+    font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);margin-left:auto;
+  }
+  .scrub{width:100%;margin-top:10px}
+  .totals{
+    display:flex;justify-content:space-between;font-size:13px;color:var(--muted);
+    margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  }
+  .totals b{color:var(--ink);font-weight:600}
+  .totals b.warn{color:var(--coral)}
+
+  .status{font-size:13px;color:var(--muted);margin-top:10px;min-height:20px}
+  .status.busy{color:var(--amber)}
+  .status.ok{color:var(--mint)}
+  .status.err{color:var(--coral)}
+  .bar{height:4px;background:#0C232B;border-radius:2px;overflow:hidden;margin-top:8px;display:none}
+  .bar i{display:block;height:100%;background:var(--coral);width:0%}
+
+  .out{margin-top:14px;display:none}
+  .out video{width:100%;border-radius:10px;background:#000;display:block;margin-bottom:10px}
+
+  footer.tips{color:var(--muted);font-size:13px;margin-top:28px;border-top:1px solid var(--line);padding-top:16px}
+  footer.tips ul{padding-left:18px;margin:8px 0 0}
+  footer.tips li{margin-bottom:5px}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <h1 class="logo">Rebus <span>Desk</span></h1>
+      <p class="tagline">Write picture puzzles, then record them as a ready-to-post video with a running countdown and an answer reveal.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ======================= CONTROL RAIL ======================= -->
+    <div>
+      <section class="panel">
+        <h2>Write the puzzles</h2>
+        <p class="note">Give Claude a theme and it will build compound-word puzzles with matching pictures. Everything stays editable afterwards.</p>
+        <div class="row">
+          <div class="grow">
+            <label for="theme">Theme</label>
+            <input type="text" id="theme" placeholder="everyday objects, food, sports, animals…" value="everyday objects around the house">
+          </div>
+          <div style="flex:0 0 108px">
+            <label for="howmany">How many</label>
+            <select id="howmany">
+              <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="gen">Write puzzles</button>
+        </div>
+        <div class="status" id="genStatus"></div>
+      </section>
+
+      <section class="panel">
+        <div class="deck-head">
+          <div>
+            <h2>Your deck</h2>
+            <span class="count" id="deckCount"></span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-ghost btn-mini" id="addPuzzle">Add a puzzle</button>
+            <button class="btn-ghost btn-mini" id="clearDeck">Clear</button>
+          </div>
+        </div>
+        <div id="deck"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Timing</h2>
+        <p class="note">Facebook rewards videos people actually finish, so keep the whole thing under a minute.</p>
+        <div class="field">
+          <div class="slider-head"><span>Guessing time per puzzle</span><b><span id="gtVal">10</span>s</b></div>
+          <input type="range" id="guessTime" min="4" max="25" value="10">
+        </div>
+        <div class="field">
+          <div class="slider-head"><span>Answer stays on screen</span><b><span id="rtVal">3</span>s</b></div>
+          <input type="range" id="revealTime" min="1.5" max="6" step="0.5" value="3">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Ticking sound</label>
+          <div class="chips">
+            <button class="chip" data-sound="on" aria-pressed="true">On</button>
+            <button class="chip" data-sound="off" aria-pressed="false">Off</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Look</h2>
+        <p class="note">Shape and colour of the finished video.</p>
+        <div class="field">
+          <label>Shape</label>
+          <div class="chips" id="aspects">
+            <button class="chip" data-w="1080" data-h="1350" aria-pressed="true">Feed post 4:5</button>
+            <button class="chip" data-w="1080" data-h="1080" aria-pressed="false">Square 1:1</button>
+            <button class="chip" data-w="1080" data-h="1920" aria-pressed="false">Reels 9:16</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Colour</label>
+          <div class="chips" id="themes">
+            <button class="chip" data-theme="chalk" aria-pressed="true">Chalkboard</button>
+            <button class="chip" data-theme="sun" aria-pressed="false">Sunburst</button>
+            <button class="chip" data-theme="night" aria-pressed="false">Midnight</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label for="headline">Headline</label>
+            <input type="text" id="headline" value="GUESS THE WORD">
+          </div>
+          <div class="grow">
+            <label for="cta">Line at the bottom</label>
+            <input type="text" id="cta" value="Answer in the comments 👇">
+          </div>
+        </div>
+        <div class="field" style="margin:16px 0 0">
+          <label for="handle">Your page name <span style="opacity:.6">(optional)</span></label>
+          <input type="text" id="handle" placeholder="@yourpage">
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================= STAGE ======================= -->
+    <div class="stage">
+      <div class="screen">
+        <canvas id="stage" width="1080" height="1350" aria-label="Video preview"></canvas>
+
+        <div class="transport">
+          <button class="btn-ghost btn-mini" id="playBtn" style="min-width:74px">Play</button>
+          <button class="btn-ghost btn-mini" id="restartBtn">Restart</button>
+          <span class="time" id="timeRead">0.0s / 0.0s</span>
+        </div>
+        <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Scrub through the video">
+
+        <div class="totals">
+          <span>Length <b id="totalRead">0s</b></span>
+          <span id="lenNote"></span>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn-record" id="recBtn">Record the video</button>
+        <div class="status" id="recStatus">Recording plays the video once in real time.</div>
+        <div class="bar" id="recBar"><i></i></div>
+        <div class="out" id="out">
+          <video id="outVid" controls playsinline></video>
+          <a id="dlLink" download><button class="btn-primary" style="width:100%">Download video</button></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="tips">
+    <strong style="color:var(--ink);font-weight:600">Getting it onto Facebook</strong>
+    <ul>
+      <li>Recording happens live, so a 40-second video takes 40 seconds. Leave the tab in the foreground while it runs.</li>
+      <li>Chrome and Edge produce the cleanest files. If your browser saves a <code>.webm</code>, Facebook still accepts it — but converting to MP4 first gives more reliable playback on older phones.</li>
+      <li>Puzzles read best when each picture is unmistakable on a small screen. Swap any emoji that needs a second look, or upload your own photo for a part.</li>
+      <li>Ask the question in your post text too. Comments are what push the video into other people's feeds.</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   Rebus Desk — picture puzzle video maker
+   ============================================================ */
+
+const $ = s => document.querySelector(s);
+const cvs = $('#stage');
+const ctx = cvs.getContext('2d');
+
+/* ---------- state ---------- */
+const S = {
+  puzzles: [],
+  guess: 10,
+  reveal: 3,
+  sound: true,
+  w: 1080, h: 1350,
+  look: 'chalk',
+  headline: 'GUESS THE WORD',
+  cta: 'Answer in the comments 👇',
+  handle: ''
+};
+
+const LOOKS = {
+  chalk: { bg1:'#123039', bg2:'#0A1E25', card:'#F1EBDD', text:'#F1EBDD', accent:'#FFC24B', hot:'#FF6B54', label:'#123039', answer:'#FFC24B' },
+  sun:   { bg1:'#FFB627', bg2:'#F2820B', card:'#FFF8EC', text:'#2A1602', accent:'#2A1602', hot:'#C42D14', label:'#2A1602', answer:'#2A1602' },
+  night: { bg1:'#161320', bg2:'#0B0910', card:'#EFEAF7', text:'#EFEAF7', accent:'#6FD9AE', hot:'#FF6B54', label:'#161320', answer:'#6FD9AE' }
+};
+
+/* ---------- fallback deck (used if the model can't be reached) ---------- */
+const STOCK = [
+  {answer:'FOOTBALL',   parts:[{label:'FOOT',emoji:'🦶'},{label:'BALL',emoji:'⚽'}]},
+  {answer:'RAINBOW',    parts:[{label:'RAIN',emoji:'🌧️'},{label:'BOW',emoji:'🎀'}]},
+  {answer:'BUTTERFLY',  parts:[{label:'BUTTER',emoji:'🧈'},{label:'FLY',emoji:'🪰'}]},
+  {answer:'CARPET',     parts:[{label:'CAR',emoji:'🚗'},{label:'PET',emoji:'🐶'}]},
+  {answer:'SUNFLOWER',  parts:[{label:'SUN',emoji:'☀️'},{label:'FLOWER',emoji:'🌸'}]},
+  {answer:'KEYBOARD',   parts:[{label:'KEY',emoji:'🔑'},{label:'BOARD',emoji:'🪵'}]},
+  {answer:'CUPCAKE',    parts:[{label:'CUP',emoji:'☕'},{label:'CAKE',emoji:'🍰'}]},
+  {answer:'STARFISH',   parts:[{label:'STAR',emoji:'⭐'},{label:'FISH',emoji:'🐟'}]},
+  {answer:'EYEBROW',    parts:[{label:'EYE',emoji:'👁️'},{label:'BROW',emoji:'🎀'}]},
+  {answer:'HONEYMOON',  parts:[{label:'HONEY',emoji:'🍯'},{label:'MOON',emoji:'🌙'}]},
+  {answer:'SNOWMAN',    parts:[{label:'SNOW',emoji:'❄️'},{label:'MAN',emoji:'👨'}]},
+  {answer:'FIREWORKS',  parts:[{label:'FIRE',emoji:'🔥'},{label:'WORKS',emoji:'🔧'}]},
+  {answer:'BOOKWORM',   parts:[{label:'BOOK',emoji:'📖'},{label:'WORM',emoji:'🪱'}]},
+  {answer:'RAINCOAT',   parts:[{label:'RAIN',emoji:'🌧️'},{label:'COAT',emoji:'🧥'}]},
+  {answer:'MOONLIGHT',  parts:[{label:'MOON',emoji:'🌙'},{label:'LIGHT',emoji:'💡'}]},
+  {answer:'TOOTHBRUSH', parts:[{label:'TOOTH',emoji:'🦷'},{label:'BRUSH',emoji:'🖌️'}]},
+  {answer:'PINEAPPLE',  parts:[{label:'PINE',emoji:'🌲'},{label:'APPLE',emoji:'🍎'}]},
+  {answer:'HANDBAG',    parts:[{label:'HAND',emoji:'✋'},{label:'BAG',emoji:'👜'}]},
+  {answer:'SEAHORSE',   parts:[{label:'SEA',emoji:'🌊'},{label:'HORSE',emoji:'🐴'}]},
+  {answer:'BEDROOM',    parts:[{label:'BED',emoji:'🛏️'},{label:'ROOM',emoji:'🚪'}]},
+  {answer:'CATFISH',    parts:[{label:'CAT',emoji:'🐱'},{label:'FISH',emoji:'🐟'}]},
+  {answer:'EARRING',    parts:[{label:'EAR',emoji:'👂'},{label:'RING',emoji:'💍'}]},
+  {answer:'SUNGLASSES', parts:[{label:'SUN',emoji:'☀️'},{label:'GLASSES',emoji:'👓'}]},
+  {answer:'BASKETBALL', parts:[{label:'BASKET',emoji:'🧺'},{label:'BALL',emoji:'🏀'}]},
+  {answer:'DOORBELL',   parts:[{label:'DOOR',emoji:'🚪'},{label:'BELL',emoji:'🔔'}]},
+  {answer:'POPCORN',    parts:[{label:'POP',emoji:'🎈'},{label:'CORN',emoji:'🌽'}]}
+];
+
+/* ============================================================
+   Puzzle helpers
+   ============================================================ */
+function newPuzzle(p){
+  return {
+    id: Math.random().toString(36).slice(2,9),
+    answer: (p?.answer || '').toUpperCase(),
+    parts: (p?.parts || [{label:'',emoji:'❓'},{label:'',emoji:'❓'}]).map(x => ({
+      label:(x.label||'').toUpperCase(), emoji:x.emoji||'❓', img:null, imgEl:null
+    }))
+  };
+}
+function joined(p){ return p.parts.map(x=>x.label.replace(/[^A-Z]/gi,'')).join('').toUpperCase(); }
+function checkPuzzle(p){
+  const a = p.answer.replace(/[^A-Z]/gi,'').toUpperCase();
+  if(!a) return {ok:false, msg:'Needs an answer'};
+  if(p.parts.some(x=>!x.label.trim())) return {ok:false, msg:'A part is missing its word'};
+  if(joined(p) === a) return {ok:true, msg:'Parts spell the answer'};
+  return {ok:false, msg:'Parts spell ' + joined(p) + ', not ' + a};
+}
+
+/* ============================================================
+   Deck UI
+   ============================================================ */
+function renderDeck(){
+  const deck = $('#deck');
+  deck.innerHTML = '';
+  $('#deckCount').textContent = S.puzzles.length
+    ? S.puzzles.length + (S.puzzles.length===1?' puzzle':' puzzles') + ' in this video'
+    : '';
+
+  if(!S.puzzles.length){
+    deck.innerHTML = '<div class="empty">No puzzles yet. Write some above, or add one by hand.</div>';
+    layoutSync(); return;
+  }
+
+  S.puzzles.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'puzzle';
+
+    const top = document.createElement('div');
+    top.className = 'puzzle-top';
+    top.innerHTML = '<span class="idx">'+(i+1)+'</span>';
+    const ans = document.createElement('input');
+    ans.type='text'; ans.value=p.answer; ans.placeholder='ANSWER';
+    ans.setAttribute('aria-label','Answer for puzzle '+(i+1));
+    ans.oninput = e => { p.answer = e.target.value.toUpperCase(); e.target.value = p.answer; softRefresh(el,p); };
+    top.appendChild(ans);
+    el.appendChild(top);
+
+    const parts = document.createElement('div');
+    parts.className='parts';
+    p.parts.forEach((part, j) => {
+      if(j>0){ const plus=document.createElement('div'); plus.className='plus'; plus.textContent='+'; parts.appendChild(plus); }
+      const box = document.createElement('div');
+      box.className='part';
+
+      const glyph = document.createElement('div');
+      glyph.className='glyph';
+      if(part.img){ const im=document.createElement('img'); im.src=part.img; glyph.appendChild(im); }
+      else glyph.textContent = part.emoji;
+      box.appendChild(glyph);
+
+      const lab = document.createElement('input');
+      lab.type='text'; lab.value=part.label; lab.placeholder='word';
+      lab.setAttribute('aria-label','Part '+(j+1)+' word');
+      lab.oninput = e => { part.label = e.target.value.toUpperCase(); e.target.value = part.label; softRefresh(el,p); };
+      box.appendChild(lab);
+
+      const emo = document.createElement('input');
+      emo.type='text'; emo.value=part.emoji; emo.style.marginTop='5px';
+      emo.setAttribute('aria-label','Part '+(j+1)+' picture');
+      emo.oninput = e => { part.emoji = e.target.value; part.img=null; part.imgEl=null; glyph.textContent=part.emoji; draw(T); };
+      box.appendChild(emo);
+
+      const tools = document.createElement('div');
+      tools.className='tools';
+      const up = document.createElement('button'); up.textContent='Photo';
+      up.onclick = () => pickImage(part, glyph);
+      tools.appendChild(up);
+      if(p.parts.length>2){
+        const rm = document.createElement('button'); rm.textContent='Remove';
+        rm.onclick = () => { p.parts.splice(j,1); renderDeck(); draw(T); };
+        tools.appendChild(rm);
+      }
+      box.appendChild(tools);
+      parts.appendChild(box);
+    });
+
+    if(p.parts.length < 3){
+      const add = document.createElement('button');
+      add.className='add-part'; add.textContent='+';
+      add.title='Add a third picture';
+      add.setAttribute('aria-label','Add a third picture');
+      add.onclick = () => { p.parts.push({label:'',emoji:'❓',img:null,imgEl:null}); renderDeck(); draw(T); };
+      parts.appendChild(add);
+    }
+    el.appendChild(parts);
+
+    const foot = document.createElement('div');
+    foot.className='puzzle-foot';
+    const v = document.createElement('span'); v.className='verdict';
+    foot.appendChild(v);
+    const del = document.createElement('button');
+    del.className='btn-ghost btn-mini'; del.textContent='Delete';
+    del.onclick = () => { S.puzzles.splice(i,1); renderDeck(); draw(T); save(); };
+    foot.appendChild(del);
+    el.appendChild(foot);
+
+    deck.appendChild(el);
+    softRefresh(el,p);
+  });
+  layoutSync();
+}
+
+function softRefresh(el, p){
+  const v = el.querySelector('.verdict');
+  const r = checkPuzzle(p);
+  v.textContent = r.msg;
+  v.className = 'verdict ' + (r.ok?'good':'bad');
+  layoutSync(); draw(T); save();
+}
+
+function pickImage(part, glyph){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = () => {
+    const f = inp.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      part.img = rd.result;
+      const im = new Image();
+      im.onload = () => { part.imgEl = im; draw(T); };
+      im.src = rd.result;
+      glyph.textContent=''; const t=document.createElement('img'); t.src=rd.result; glyph.appendChild(t);
+      save();
+    };
+    rd.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+/* ============================================================
+   Asking Claude for puzzles
+   ============================================================ */
+$('#gen').onclick = async () => {
+  const btn = $('#gen'), st = $('#genStatus');
+  const theme = $('#theme').value.trim() || 'everyday objects';
+  const n = parseInt($('#howmany').value,10);
+  btn.disabled = true;
+  st.className='status busy'; st.textContent='Writing puzzles…';
+
+  const used = S.puzzles.map(p=>p.answer).filter(Boolean).join(', ');
+  const prompt = `Create ${n} rebus picture puzzles about: ${theme}.
+
+Each puzzle is a word split into 2 (occasionally 3) picture-able chunks, where reading the pictures aloud in order gives the answer. Example: FOOT + BALL = FOOTBALL.
+
+Rules:
+- The answer must be a real, common English word or a very familiar two-word phrase.
+- Joining the part labels letter-for-letter must spell the answer exactly. No missing or extra letters.
+- Every part must be a concrete thing you can show in one picture. No abstract parts.
+- Pick one emoji per part that anyone would name correctly at a glance on a phone screen.
+- Keep answers easy enough that most people get them in about 10 seconds.
+${used ? '- Do not reuse any of these answers: ' + used : ''}
+
+Reply with JSON only. No prose, no markdown fences.
+[{"answer":"FOOTBALL","parts":[{"label":"FOOT","emoji":"🦶"},{"label":"BALL","emoji":"⚽"}]}]`;
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user', content:prompt}]
+      })
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    let text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    text = text.replace(/```json|```/g,'').trim();
+    const first = text.indexOf('['), last = text.lastIndexOf(']');
+    if(first<0||last<0) throw new Error('unparseable');
+    const list = JSON.parse(text.slice(first,last+1));
+
+    let added = 0;
+    list.forEach(item => {
+      const p = newPuzzle(item);
+      if(checkPuzzle(p).ok){ S.puzzles.push(p); added++; }
+    });
+    if(!added) throw new Error('nothing usable');
+    st.className='status ok';
+    st.textContent = 'Added ' + added + (added===1?' puzzle':' puzzles') + '. Edit anything that looks off.';
+    renderDeck(); save();
+  }catch(err){
+    const pool = STOCK.filter(s => !S.puzzles.some(p=>p.answer===s.answer));
+    const pick = pool.sort(()=>Math.random()-0.5).slice(0,n);
+    pick.forEach(s => S.puzzles.push(newPuzzle(s)));
+    st.className='status err';
+    st.textContent = pick.length
+      ? "Couldn't reach the writer, so I pulled " + pick.length + ' from the built-in set instead.'
+      : "Couldn't reach the writer and the built-in set is used up. Try adding one by hand.";
+    renderDeck(); save();
+  }finally{
+    btn.disabled = false;
+  }
+};
+
+$('#addPuzzle').onclick = () => { S.puzzles.push(newPuzzle()); renderDeck(); save(); };
+$('#clearDeck').onclick = () => { S.puzzles = []; renderDeck(); draw(T=0); save(); };
+
+/* ============================================================
+   Timeline
+   ============================================================ */
+function segments(){
+  const segs = [];
+  S.puzzles.forEach(p => {
+    segs.push({type:'quiz', p, dur:S.guess});
+    segs.push({type:'reveal', p, dur:S.reveal});
+  });
+  return segs;
+}
+function totalTime(){ return segments().reduce((a,s)=>a+s.dur, 0); }
+function at(t){
+  let acc = 0;
+  for(const s of segments()){
+    if(t < acc + s.dur) return {seg:s, local:t-acc, index:segments().indexOf(s)};
+    acc += s.dur;
+  }
+  const segs = segments();
+  const last = segs[segs.length-1];
+  return last ? {seg:last, local:last.dur, index:segs.length-1} : null;
+}
+
+/* ============================================================
+   Canvas drawing
+   ============================================================ */
+function rr(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+const easeOutBack = t => { const c=1.70158+1; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
+const clamp01 = v => Math.max(0, Math.min(1, v));
+
+function fitFont(text, family, maxW, startSize){
+  let size = startSize;
+  ctx.font = '400 ' + size + 'px ' + family;
+  while(ctx.measureText(text).width > maxW && size > 12){
+    size -= 4;
+    ctx.font = '400 ' + size + 'px ' + family;
+  }
+  return size;
+}
+
+function draw(t){
+  const W = cvs.width, H = cvs.height, C = LOOKS[S.look];
+
+  // background
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, C.bg1); g.addColorStop(1, C.bg2);
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  const spot = ctx.createRadialGradient(W/2, H*0.42, 0, W/2, H*0.42, W*0.85);
+  spot.addColorStop(0,'rgba(255,255,255,0.07)');
+  spot.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = spot; ctx.fillRect(0,0,W,H);
+
+  const cur = at(t);
+  if(!cur){
+    ctx.fillStyle = C.text;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    const s = fitFont('ADD A PUZZLE', 'Anton, Impact, sans-serif', W*0.7, 90);
+    ctx.font = '400 '+s+'px Anton, Impact, sans-serif';
+    ctx.globalAlpha = .5;
+    ctx.fillText('ADD A PUZZLE', W/2, H/2);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  const {seg, local} = cur;
+  const p = seg.p;
+  const isQuiz = seg.type === 'quiz';
+  const left = isQuiz ? Math.max(0, seg.dur - local) : 0;
+
+  // --- top progress bar ---
+  const barH = Math.round(H*0.012);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(0,0,W,barH);
+  ctx.fillStyle = isQuiz ? (left<=3 ? C.hot : C.accent) : C.accent;
+  ctx.fillRect(0, 0, isQuiz ? W*(left/seg.dur) : W, barH);
+
+  // --- headline ---
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle = C.text;
+  const head = (S.headline||'').toUpperCase();
+  if(head){
+    const hs = fitFont(head, 'Anton, Impact, sans-serif', W*0.86, Math.round(W*0.085));
+    ctx.font = '400 '+hs+'px Anton, Impact, sans-serif';
+    ctx.globalAlpha = .92;
+    ctx.fillText(head, W/2, H*0.115);
+    ctx.globalAlpha = 1;
+  }
+
+  // --- countdown ring ---
+  const cx = W/2, cy = H*0.225, R = W*0.088;
+  ctx.lineWidth = W*0.022;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+
+  if(isQuiz){
+    const frac = left/seg.dur;
+    const hurry = left<=3;
+    ctx.strokeStyle = hurry ? C.hot : C.accent;
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, -Math.PI/2, -Math.PI/2 + Math.PI*2*frac);
+    ctx.stroke();
+    ctx.lineCap='butt';
+
+    const secs = Math.ceil(left - 0.0001);
+    const beat = 1 - (left % 1);
+    const pulse = hurry ? 1 + 0.16*Math.pow(1-beat, 3) : 1;
+    ctx.save();
+    ctx.translate(cx, cy); ctx.scale(pulse, pulse);
+    ctx.fillStyle = hurry ? C.hot : C.text;
+    ctx.font = '400 '+Math.round(R*1.15)+'px Anton, Impact, sans-serif';
+    ctx.fillText(String(Math.max(0,secs)), 0, R*0.06);
+    ctx.restore();
+  }else{
+    ctx.strokeStyle = C.accent;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle = C.accent;
+    ctx.font = '400 '+Math.round(R*1.0)+'px Anton, Impact, sans-serif';
+    ctx.fillText('!', cx, cy + R*0.06);
+  }
+
+  // --- picture cards ---
+  const n = p.parts.length;
+  const margin = W*0.07;
+  const gap = W*0.085;
+  const avail = W - margin*2 - gap*(n-1);
+  let card = avail/n;
+  card = Math.min(card, H*0.30);
+  const rowY = H*0.52;
+  const startX = (W - (card*n + gap*(n-1)))/2;
+
+  p.parts.forEach((part, i) => {
+    const x = startX + i*(card+gap);
+    const y = rowY - card/2;
+
+    let sc = 1;
+    if(isQuiz){
+      const in_ = clamp01((local - i*0.09)/0.45);
+      sc = 0.72 + 0.28*easeOutBack(in_);
+      if(in_ <= 0) sc = 0;
+    }
+    if(sc <= 0) return;
+
+    ctx.save();
+    ctx.translate(x+card/2, y+card/2); ctx.scale(sc,sc); ctx.translate(-(x+card/2), -(y+card/2));
+
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = W*0.03; ctx.shadowOffsetY = W*0.012;
+    ctx.fillStyle = C.card;
+    rr(x, y, card, card, card*0.14); ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+    if(part.imgEl){
+      ctx.save();
+      rr(x+card*0.05, y+card*0.05, card*0.9, card*0.9, card*0.10); ctx.clip();
+      const im = part.imgEl;
+      const s = Math.max(card*0.9/im.width, card*0.9/im.height);
+      const dw = im.width*s, dh = im.height*s;
+      ctx.drawImage(im, x+card*0.5-dw/2, y+card*0.5-dh/2, dw, dh);
+      ctx.restore();
+    }else{
+      ctx.fillStyle = '#000';
+      ctx.font = Math.round(card*0.52)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.fillText(part.emoji || '❓', x+card/2, y+card/2 + card*0.03);
+    }
+
+    // label appears only once the answer is out
+    if(!isQuiz){
+      const a = clamp01(local/0.45);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = C.text;
+      const ls = fitFont(part.label, 'Anton, Impact, sans-serif', card*1.06, Math.round(card*0.19));
+      ctx.font = '400 '+ls+'px Anton, Impact, sans-serif';
+      ctx.fillText(part.label, x+card/2, y+card + card*0.17);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    if(i < n-1){
+      ctx.fillStyle = C.text; ctx.globalAlpha = .75;
+      ctx.font = '400 '+Math.round(gap*0.78)+'px Anton, Impact, sans-serif';
+      ctx.fillText('+', x + card + gap/2, rowY);
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // --- answer line ---
+  const ansY = H*0.775;
+  if(isQuiz){
+    ctx.fillStyle = C.text; ctx.globalAlpha = .85;
+    const qs = fitFont('= ?', 'Anton, Impact, sans-serif', W*0.5, Math.round(W*0.13));
+    ctx.font = '400 '+qs+'px Anton, Impact, sans-serif';
+    ctx.fillText('= ?', W/2, ansY);
+    ctx.globalAlpha = 1;
+  }else{
+    const pop = easeOutBack(clamp01(local/0.5));
+    ctx.save();
+    ctx.translate(W/2, ansY);
+    ctx.scale(0.6+0.4*pop, 0.6+0.4*pop);
+    ctx.fillStyle = C.answer;
+    const as = fitFont(p.answer, 'Anton, Impact, sans-serif', W*0.86, Math.round(W*0.155));
+    ctx.font = '400 '+as+'px Anton, Impact, sans-serif';
+    ctx.fillText(p.answer, 0, 0);
+    ctx.restore();
+
+    if(local < 0.18){
+      ctx.fillStyle = 'rgba(255,255,255,'+(0.5*(1-local/0.18))+')';
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // --- footer ---
+  ctx.fillStyle = C.text; ctx.globalAlpha = .8;
+  const cta = S.cta || '';
+  if(cta){
+    const cs = fitFont(cta, 'Inter, sans-serif', W*0.86, Math.round(W*0.052));
+    ctx.font = '600 '+cs+'px Inter, sans-serif';
+    ctx.fillText(cta, W/2, H*0.90);
+  }
+  if(S.handle){
+    ctx.globalAlpha = .5;
+    ctx.font = '500 '+Math.round(W*0.034)+'px Inter, sans-serif';
+    ctx.fillText(S.handle, W/2, H*0.955);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ============================================================
+   Playback
+   ============================================================ */
+let T = 0, playing = false, recording = false, clockT0 = 0;
+
+/* One clock for everything. When the audio engine is up we read the
+   AudioContext's own clock, which is the same clock the sound cues are
+   scheduled against — so a stalled frame can never drift the picture
+   away from the ticks. */
+function clockNow(){
+  return (AC && AC.state === 'running') ? AC.currentTime : performance.now()/1000;
+}
+
+function loop(){
+  if(!playing) return;
+  const total = totalTime();
+  T = Math.max(0, clockNow() - clockT0);
+
+  if(T >= total){
+    T = total;
+    draw(T); syncTime();
+    playing = false;
+    $('#playBtn').textContent = 'Play';
+    if(recording) endOfProgram();
+    return;
+  }
+
+  draw(T);
+  syncTime();
+  if(recording){
+    $('#recBar').firstElementChild.style.width = (T/total*100)+'%';
+    $('#recStatus').textContent = 'Recording… ' + Math.ceil(total-T) + 's left. Keep this tab in front.';
+  }
+  requestAnimationFrame(loop);
+}
+
+async function play(){
+  if(!S.puzzles.length) return;
+  if(T >= totalTime() - 0.02) T = 0;
+  await initAudio();
+  startCues(T);
+  clockT0 = clockNow() - T;
+  playing = true;
+  $('#playBtn').textContent = 'Pause';
+  requestAnimationFrame(loop);
+}
+function pause(){
+  playing = false;
+  cancelCues();
+  $('#playBtn').textContent = 'Play';
+}
+
+$('#playBtn').onclick = () => playing ? pause() : play();
+$('#restartBtn').onclick = () => { pause(); T=0; draw(T); syncTime(); };
+$('#scrub').oninput = e => {
+  pause();
+  T = totalTime() * (e.target.value/1000);
+  draw(T); syncTime();
+};
+
+function syncTime(){
+  const total = totalTime();
+  $('#timeRead').textContent = T.toFixed(1)+'s / '+total.toFixed(1)+'s';
+  $('#scrub').value = total ? Math.round(T/total*1000) : 0;
+}
+function layoutSync(){
+  const total = totalTime();
+  const el = $('#totalRead');
+  el.textContent = total.toFixed(0)+'s';
+  const note = $('#lenNote');
+  if(!total){ el.className=''; note.textContent=''; }
+  else if(total < 15){ el.className='warn'; note.innerHTML='Under 15s — add a puzzle'; }
+  else if(total > 60){ el.className='warn'; note.innerHTML='Over 60s — trim it down'; }
+  else { el.className=''; note.textContent='Good length for the feed'; }
+  if(T > total) T = total;
+  syncTime();
+}
+
+/* ============================================================
+   Sound
+   ============================================================ */
+let AC = null, master = null, recBus = null, live = [];
+
+/* 48 kHz matches what Opus and AAC want, so the muxer never resamples.
+   The bus is built once and always carries an audio track, even when the
+   ticks are switched off — a video with a silent track uploads more
+   predictably than one with no track at all. */
+function initAudio(){
+  if(!AC){
+    try{
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      AC = new Ctor({sampleRate:48000, latencyHint:'interactive'});
+      master = AC.createGain();
+      master.gain.value = S.sound ? 1 : 0;
+      recBus = AC.createMediaStreamDestination();
+      master.connect(AC.destination);
+      master.connect(recBus);
+      // A permanently running silent source keeps the outgoing track alive
+      // so the encoder never sees it go idle between cues.
+      const hum = AC.createConstantSource();
+      hum.offset.value = 0;
+      hum.connect(master);
+      hum.start();
+    }catch(e){ AC = null; }
+  }
+  if(!AC) return Promise.resolve(null);
+  // Awaited, so nothing is ever scheduled against a suspended context.
+  return AC.resume().then(()=>AC).catch(()=>AC);
+}
+
+function tock(when, urgent){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(urgent ? 1500 : 1000, when);
+  o.frequency.exponentialRampToValueAtTime(urgent ? 900 : 620, when + 0.045);
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(urgent ? 0.34 : 0.20, when + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.12);
+  o.connect(g); g.connect(master);
+  o.start(when); o.stop(when + 0.16);
+  live.push(o);
+}
+
+function chime(when){
+  [[0,587.33],[0.10,880],[0.20,1174.66]].forEach(([off, hz]) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(hz, when + off);
+    g.gain.setValueAtTime(0.0001, when + off);
+    g.gain.exponentialRampToValueAtTime(0.22, when + off + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + off + 0.55);
+    o.connect(g); g.connect(master);
+    o.start(when + off); o.stop(when + off + 0.6);
+    live.push(o);
+  });
+}
+
+/* Every sound in the whole video, as offsets from t=0. */
+function cueList(){
+  const cues = [];
+  let acc = 0;
+  for(const s of segments()){
+    if(s.type === 'quiz'){
+      for(let k = Math.floor(s.dur); k >= 1; k--){
+        cues.push({t: acc + (s.dur - k), kind: k <= 3 ? 'urgent' : 'tick'});
+      }
+    }else{
+      cues.push({t: acc, kind:'reveal'});
+    }
+    acc += s.dur;
+  }
+  return cues;
+}
+
+/* Schedule the remainder of the timeline in one go, against the audio
+   clock. Nothing depends on a frame arriving on time after this point. */
+function startCues(from){
+  cancelCues();
+  if(!AC || AC.state !== 'running') return;
+  const base = AC.currentTime - from;
+  cueList().forEach(c => {
+    if(c.t < from - 0.01) return;
+    if(c.kind === 'reveal') chime(base + c.t);
+    else tock(base + c.t, c.kind === 'urgent');
+  });
+}
+
+function cancelCues(){
+  live.forEach(o => { try{ o.stop(); }catch(e){} });
+  live = [];
+}
+
+/* ============================================================
+   Recording
+   ============================================================ */
+let rec = null, chunks = [];
+
+function pickMime(){
+  const list = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  for(const m of list) if(window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  return '';
+}
+
+$('#recBtn').onclick = async () => {
+  if(recording) return;
+  if(!S.puzzles.length){
+    $('#recStatus').className='status err';
+    $('#recStatus').textContent='Add at least one puzzle first.';
+    return;
+  }
+  const bad = S.puzzles.find(p => !checkPuzzle(p).ok);
+  if(bad){
+    $('#recStatus').className='status err';
+    $('#recStatus').textContent='One of the puzzles still has a problem — check the deck.';
+    return;
+  }
+  if(!window.MediaRecorder){
+    $('#recStatus').className='status err';
+    $('#recStatus').textContent='This browser cannot record video. Try Chrome or Edge.';
+    return;
+  }
+
+  try{ await document.fonts.ready; }catch(e){}
+
+  // Resume and settle the audio graph first — a suspended context at this
+  // point is what produces a silent or clipped soundtrack.
+  await initAudio();
+  if(!AC){
+    $('#recStatus').className='status err';
+    $('#recStatus').textContent='This browser blocked audio. The video will still record without sound.';
+  }
+
+  const stream = cvs.captureStream(30);
+  if(recBus) recBus.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+
+  chunks = [];
+  const mime = pickMime();
+  const opts = {videoBitsPerSecond: 8000000, audioBitsPerSecond: 128000};
+  if(mime) opts.mimeType = mime;
+  try{
+    rec = new MediaRecorder(stream, opts);
+  }catch(e){
+    rec = new MediaRecorder(stream);
+  }
+  rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = finishRecording;
+
+  recording = true;
+  $('#recBtn').disabled = true;
+  $('#recBtn').textContent = 'Recording…';
+  $('#out').style.display='none';
+  $('#recBar').style.display='block';
+  $('#recStatus').className='status busy';
+  $('#recBar').firstElementChild.style.width='0%';
+
+  T = 0; draw(0);
+  rec.start(250);
+
+  // Hold on the first frame for a beat. The encoder needs both tracks
+  // flowing before the first tick, or that tick lands ahead of the picture.
+  await new Promise(r => setTimeout(r, 350));
+  play();
+};
+
+// Let the last frame and the tail of the final chime finish before cutting.
+function endOfProgram(){
+  cancelCues();
+  setTimeout(()=>{
+    if(rec && rec.state !== 'inactive'){ try{ rec.stop(); }catch(e){} }
+  }, 600);
+}
+
+function finishRecording(){
+  recording = false;
+  $('#recBtn').disabled = false;
+  $('#recBtn').textContent = 'Record the video';
+  $('#recBar').style.display='none';
+
+  const type = (rec && rec.mimeType) || 'video/webm';
+  const blob = new Blob(chunks, {type});
+  const url = URL.createObjectURL(blob);
+  const ext = type.includes('mp4') ? 'mp4' : 'webm';
+
+  $('#outVid').src = url;
+  const a = $('#dlLink');
+  a.href = url;
+  a.download = 'rebus-puzzle.' + ext;
+  $('#out').style.display='block';
+
+  const mb = (blob.size/1048576).toFixed(1);
+  $('#recStatus').className='status ok';
+  $('#recStatus').textContent = 'Done — ' + mb + ' MB .' + ext + '. Play it back before you post.';
+}
+
+/* ============================================================
+   Settings wiring
+   ============================================================ */
+$('#guessTime').oninput = e => { S.guess = +e.target.value; $('#gtVal').textContent = S.guess; layoutSync(); draw(T); save(); };
+$('#revealTime').oninput = e => { S.reveal = +e.target.value; $('#rtVal').textContent = S.reveal; layoutSync(); draw(T); save(); };
+$('#headline').oninput = e => { S.headline = e.target.value; draw(T); save(); };
+$('#cta').oninput = e => { S.cta = e.target.value; draw(T); save(); };
+$('#handle').oninput = e => { S.handle = e.target.value; draw(T); save(); };
+
+function chipGroup(sel, fn){
+  document.querySelectorAll(sel).forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed','false'));
+      b.setAttribute('aria-pressed','true');
+      fn(b); draw(T); save();
+    };
+  });
+}
+chipGroup('#aspects .chip', b => { cvs.width = S.w = +b.dataset.w; cvs.height = S.h = +b.dataset.h; });
+chipGroup('#themes .chip', b => { S.look = b.dataset.theme; });
+chipGroup('[data-sound]', b => {
+  S.sound = b.dataset.sound === 'on';
+  if(master) master.gain.setTargetAtTime(S.sound ? 1 : 0, AC.currentTime, 0.01);
+});
+
+/* ============================================================
+   Save between visits
+   ============================================================ */
+async function save(){
+  try{
+    if(!window.storage) return;
+    await window.storage.set('rebusdesk:project', JSON.stringify({
+      puzzles: S.puzzles.map(p => ({answer:p.answer, parts:p.parts.map(x=>({label:x.label, emoji:x.emoji}))})),
+      guess:S.guess, reveal:S.reveal, sound:S.sound, w:S.w, h:S.h,
+      look:S.look, headline:S.headline, cta:S.cta, handle:S.handle
+    }));
+  }catch(e){}
+}
+async function load(){
+  try{
+    if(!window.storage) return false;
+    const r = await window.storage.get('rebusdesk:project');
+    if(!r || !r.value) return false;
+    const d = JSON.parse(r.value);
+    S.puzzles = (d.puzzles||[]).map(newPuzzle);
+    S.guess = d.guess ?? S.guess; S.reveal = d.reveal ?? S.reveal;
+    S.sound = d.sound ?? S.sound;
+    S.w = d.w || S.w; S.h = d.h || S.h;
+    S.look = d.look || S.look;
+    S.headline = d.headline ?? S.headline;
+    S.cta = d.cta ?? S.cta; S.handle = d.handle ?? S.handle;
+
+    cvs.width = S.w; cvs.height = S.h;
+    $('#guessTime').value = S.guess; $('#gtVal').textContent = S.guess;
+    $('#revealTime').value = S.reveal; $('#rtVal').textContent = S.reveal;
+    $('#headline').value = S.headline; $('#cta').value = S.cta; $('#handle').value = S.handle;
+    document.querySelectorAll('#aspects .chip').forEach(b =>
+      b.setAttribute('aria-pressed', (+b.dataset.w===S.w && +b.dataset.h===S.h) ? 'true':'false'));
+    document.querySelectorAll('#themes .chip').forEach(b =>
+      b.setAttribute('aria-pressed', b.dataset.theme===S.look ? 'true':'false'));
+    document.querySelectorAll('[data-sound]').forEach(b =>
+      b.setAttribute('aria-pressed', (b.dataset.sound==='on')===S.sound ? 'true':'false'));
+    return S.puzzles.length > 0;
+  }catch(e){ return false; }
+}
+
+/* ============================================================
+   Start
+   ============================================================ */
+(async function start(){
+  const restored = await load();
+  if(!restored){
+    STOCK.slice(0,3).forEach(s => S.puzzles.push(newPuzzle(s)));
+  }
+  renderDeck();
+  try{ await document.fonts.ready; }catch(e){}
+  draw(0);
+  layoutSync();
+})();
+</script>
