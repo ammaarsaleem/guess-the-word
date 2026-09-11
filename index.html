@@ -128,6 +128,38 @@
   }
   .chip[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#12303A}
 
+  /* ---- theme tags ---- */
+  .tagbox{
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+    background:#0C232B;border:1px solid var(--line);border-radius:8px;padding:7px;
+  }
+  .tagbox:focus-within{outline:2px solid var(--amber);outline-offset:2px}
+  .tagbox input{
+    flex:1 1 150px;min-width:130px;border:none;background:transparent;
+    padding:4px 6px;color:var(--ink);font:inherit;font-size:14px;
+  }
+  .tagbox input:focus{outline:none}
+  .tag{
+    display:inline-flex;align-items:center;gap:7px;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:6px;padding:4px 5px 4px 10px;font-size:13px;
+  }
+  .tag button{
+    background:none;border:none;color:var(--muted);padding:0 3px;
+    font-size:15px;line-height:1;font-weight:400;border-radius:4px;
+  }
+  .tag button:hover{color:var(--coral)}
+  .suggest{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .suggest button{
+    background:transparent;border:1px dashed var(--line);color:var(--muted);
+    font-size:12.5px;font-weight:500;padding:4px 11px;border-radius:999px;
+  }
+  .suggest button:hover{border-color:var(--amber);border-style:solid;color:var(--amber)}
+  .hint{color:var(--muted);font-size:12.5px;margin:9px 0 0}
+  .tagline-sm{
+    display:inline-block;background:var(--panel);border:1px solid var(--line);
+    color:var(--muted);font-size:11px;padding:2px 7px;border-radius:5px;
+  }
+
   /* ---- stage ---- */
   .stage{position:sticky;top:20px}
   .screen{
@@ -179,16 +211,40 @@
     <div>
       <section class="panel">
         <h2>Write the puzzles</h2>
-        <p class="note">Give Claude a theme and it will build compound-word puzzles with matching pictures. Everything stays editable afterwards.</p>
-        <div class="row">
-          <div class="grow">
-            <label for="theme">Theme</label>
-            <input type="text" id="theme" placeholder="everyday objects, food, sports, animals…" value="everyday objects around the house">
+        <p class="note">Add one or more themes and Claude will spread the puzzles across them. Everything stays editable afterwards.</p>
+
+        <div class="field">
+          <label for="themeInput">Themes</label>
+          <div class="tagbox" id="tagbox">
+            <input type="text" id="themeInput" placeholder="Type a theme, press Enter">
           </div>
-          <div style="flex:0 0 108px">
+          <div class="suggest" id="suggest"></div>
+        </div>
+
+        <div class="field">
+          <label>Difficulty</label>
+          <div class="chips" id="difficulty">
+            <button class="chip" data-diff="easy" aria-pressed="false">Easy</button>
+            <button class="chip" data-diff="medium" aria-pressed="true">Medium</button>
+            <button class="chip" data-diff="hard" aria-pressed="false">Hard</button>
+            <button class="chip" data-diff="mixed" aria-pressed="false">Mixed</button>
+          </div>
+          <p class="hint" id="diffHint"></p>
+        </div>
+
+        <div class="row">
+          <div style="flex:0 0 120px">
             <label for="howmany">How many</label>
-            <select id="howmany">
-              <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+            <select id="howmany"></select>
+          </div>
+          <div style="flex:1 1 150px">
+            <label for="pieces">Pictures each</label>
+            <select id="pieces">
+              <option value="auto" selected>Match difficulty</option>
+              <option value="2">Always 2</option>
+              <option value="3">Always 3</option>
+              <option value="4">Always 4</option>
+              <option value="5">Always 5</option>
             </select>
           </div>
           <button class="btn-primary" id="gen">Write puzzles</button>
@@ -319,6 +375,10 @@ const ctx = cvs.getContext('2d');
 /* ---------- state ---------- */
 const S = {
   puzzles: [],
+  themes: ['everyday objects', 'food'],
+  difficulty: 'medium',
+  count: 6,
+  pieces: 'auto',
   guess: 10,
   reveal: 3,
   sound: true,
@@ -327,6 +387,47 @@ const S = {
   headline: 'GUESS THE WORD',
   cta: 'Answer in the comments 👇',
   handle: ''
+};
+
+const SUGGESTED_THEMES = [
+  'vegetables','fruit','everyday objects','animals','sports','the kitchen',
+  'clothing','weather','travel','body parts','school','tools','music','nature',
+  'the beach','transport','jobs','the garden'
+];
+
+const DIFFICULTY = {
+  easy: {
+    label:'Easy',
+    hint:'Two pictures, short familiar words. Most people solve these in a few seconds.',
+    pieces:'exactly 2 pictures',
+    words:'short, extremely common single words that a child would know, usually 6 to 9 letters',
+    solve:'about 4 seconds',
+    extra:'Split the word at its obvious seam and pick the most literal emoji available.'
+  },
+  medium: {
+    label:'Medium',
+    hint:'Two or three pictures, everyday words. The sweet spot for a 10-second timer.',
+    pieces:'2 or 3 pictures',
+    words:'common everyday words and well-known two-word phrases, roughly 7 to 12 letters',
+    solve:'about 8 seconds',
+    extra:'At least one piece should be a slightly less obvious chunk, so the answer takes a moment to click.'
+  },
+  hard: {
+    label:'Hard',
+    hint:'Three to five pictures and longer words. Give these a longer timer.',
+    pieces:'3 to 5 pictures',
+    words:'longer words and phrases, 10 letters or more, including compounds built from three or more chunks',
+    solve:'about 15 seconds',
+    extra:'Break the word into smaller chunks than feel natural, so the split itself is part of the challenge. Short pieces like IN, ON, ANT, EAR, PEN and CAR are useful here.'
+  },
+  mixed: {
+    label:'Mixed',
+    hint:'A spread of all three, so the video builds from quick wins to a hard finish.',
+    pieces:'anywhere from 2 to 5 pictures',
+    words:'a deliberate spread — some short and instant, some long and tricky',
+    solve:'4 to 15 seconds depending on the puzzle',
+    extra:'Order them from easiest to hardest, so the video gets harder as it goes.'
+  }
 };
 
 const LOOKS = {
@@ -372,7 +473,8 @@ function newPuzzle(p){
   return {
     id: Math.random().toString(36).slice(2,9),
     answer: (p?.answer || '').toUpperCase(),
-    parts: (p?.parts || [{label:'',emoji:'❓'},{label:'',emoji:'❓'}]).map(x => ({
+    theme: p?.theme || '',
+    parts: (p?.parts || [{label:'',emoji:'❓'},{label:'',emoji:'❓'}]).slice(0,5).map(x => ({
       label:(x.label||'').toUpperCase(), emoji:x.emoji||'❓', img:null, imgEl:null
     }))
   };
@@ -454,11 +556,11 @@ function renderDeck(){
       parts.appendChild(box);
     });
 
-    if(p.parts.length < 3){
+    if(p.parts.length < 5){
       const add = document.createElement('button');
       add.className='add-part'; add.textContent='+';
-      add.title='Add a third picture';
-      add.setAttribute('aria-label','Add a third picture');
+      add.title='Add another picture';
+      add.setAttribute('aria-label','Add another picture');
       add.onclick = () => { p.parts.push({label:'',emoji:'❓',img:null,imgEl:null}); renderDeck(); draw(T); };
       parts.appendChild(add);
     }
@@ -466,8 +568,16 @@ function renderDeck(){
 
     const foot = document.createElement('div');
     foot.className='puzzle-foot';
+    const left = document.createElement('div');
+    left.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
     const v = document.createElement('span'); v.className='verdict';
-    foot.appendChild(v);
+    left.appendChild(v);
+    if(p.theme){
+      const tg = document.createElement('span');
+      tg.className='tagline-sm'; tg.textContent = p.theme;
+      left.appendChild(tg);
+    }
+    foot.appendChild(left);
     const del = document.createElement('button');
     del.className='btn-ghost btn-mini'; del.textContent='Delete';
     del.onclick = () => { S.puzzles.splice(i,1); renderDeck(); draw(T); save(); };
@@ -510,68 +620,167 @@ function pickImage(part, glyph){
 /* ============================================================
    Asking Claude for puzzles
    ============================================================ */
-$('#gen').onclick = async () => {
-  const btn = $('#gen'), st = $('#genStatus');
-  const theme = $('#theme').value.trim() || 'everyday objects';
-  const n = parseInt($('#howmany').value,10);
-  btn.disabled = true;
-  st.className='status busy'; st.textContent='Writing puzzles…';
+/* ============================================================
+   Themes, difficulty and the ask
+   ============================================================ */
+function renderTags(){
+  const box = $('#tagbox');
+  box.querySelectorAll('.tag').forEach(t => t.remove());
+  const input = $('#themeInput');
+  S.themes.forEach((t, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.append(t);
+    const x = document.createElement('button');
+    x.type='button'; x.textContent='×';
+    x.setAttribute('aria-label','Remove ' + t);
+    x.onclick = () => { S.themes.splice(i,1); renderTags(); save(); };
+    tag.appendChild(x);
+    box.insertBefore(tag, input);
+  });
+  input.placeholder = S.themes.length ? 'Add another' : 'Type a theme, press Enter';
 
-  const used = S.puzzles.map(p=>p.answer).filter(Boolean).join(', ');
-  const prompt = `Create ${n} rebus picture puzzles about: ${theme}.
+  const sg = $('#suggest');
+  sg.innerHTML = '';
+  SUGGESTED_THEMES.filter(t => !S.themes.includes(t)).slice(0,7).forEach(t => {
+    const b = document.createElement('button');
+    b.type='button'; b.textContent = '+ ' + t;
+    b.onclick = () => { addTheme(t); };
+    sg.appendChild(b);
+  });
+}
+function addTheme(raw){
+  const t = raw.trim().replace(/,+$/,'').toLowerCase();
+  if(!t || S.themes.includes(t) || S.themes.length >= 8) return;
+  S.themes.push(t); renderTags(); save();
+}
+$('#themeInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ','){
+    e.preventDefault(); addTheme(e.target.value); e.target.value='';
+  }else if(e.key === 'Backspace' && !e.target.value && S.themes.length){
+    S.themes.pop(); renderTags(); save();
+  }
+});
+$('#themeInput').addEventListener('blur', e => { addTheme(e.target.value); e.target.value=''; });
 
-Each puzzle is a word split into 2 (occasionally 3) picture-able chunks, where reading the pictures aloud in order gives the answer. Example: FOOT + BALL = FOOTBALL.
+function buildPrompt(themes, diff, pieces, n, avoid){
+  const D = DIFFICULTY[diff];
+  const pieceRule = pieces === 'auto'
+    ? D.pieces
+    : 'exactly ' + pieces + ' pictures';
 
-Rules:
-- The answer must be a real, common English word or a very familiar two-word phrase.
-- Joining the part labels letter-for-letter must spell the answer exactly. No missing or extra letters.
-- Every part must be a concrete thing you can show in one picture. No abstract parts.
-- Pick one emoji per part that anyone would name correctly at a glance on a phone screen.
-- Keep answers easy enough that most people get them in about 10 seconds.
-${used ? '- Do not reuse any of these answers: ' + used : ''}
+  return `Write ${n} rebus picture puzzles for a short social video.
+
+A rebus here is one word, or a very familiar two-word phrase, cut into pieces. Each piece is shown as a single picture. Reading the pictures left to right gives the answer.
+
+THE RULE THAT DECIDES EVERYTHING
+Join the piece labels letter for letter and they must spell the answer exactly. Nothing added, nothing dropped, nothing changed.
+  Works:  FOOT + BALL -> FOOTBALL
+  Works:  CAR + PET -> CARPET
+  Works:  BUT + TER + FLY -> BUTTERFLY
+  Fails:  PINE + APPLE -> PINEAPPLES   (an S appears from nowhere)
+  Fails:  BUTTER + FLIES -> BUTTERFLY  (the letters do not line up)
+Spell each one out letter by letter before you commit to it. Drop any that fail and replace it.
+
+THEMES
+${themes.map(t => '- ' + t).join('\n')}
+Spread the puzzles roughly evenly across these. The theme describes the ANSWER, never the pieces — a vegetable puzzle can be made from pieces that have nothing to do with vegetables. Tag each puzzle with the theme it belongs to.
+
+DIFFICULTY: ${D.label}
+- Use ${pieceRule}.
+- Answers should be ${D.words}.
+- Aim for a solve time of ${D.solve} for someone watching on a phone.
+- ${D.extra}
+
+THE PICTURES
+Each piece gets one emoji that nearly everyone would name with that exact word at a glance, at thumbnail size. If a piece has no emoji that reads unambiguously, pick a different puzzle rather than settling for a vague one. Do not use letters, numbers, flags, or emoji whose common name differs from the piece label.
+
+ALSO
+- Answers must be things people actually say, not clever constructions.
+- Keep every answer distinct in sound and meaning from the others in this batch.
+${avoid.length ? '- Do not use any of these, they are already in the deck: ' + avoid.join(', ') : ''}
 
 Reply with JSON only. No prose, no markdown fences.
-[{"answer":"FOOTBALL","parts":[{"label":"FOOT","emoji":"🦶"},{"label":"BALL","emoji":"⚽"}]}]`;
+[{"answer":"FOOTBALL","theme":"sports","parts":[{"label":"FOOT","emoji":"🦶"},{"label":"BALL","emoji":"⚽"}]}]`;
+}
 
-  try{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user', content:prompt}]
-      })
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    let text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-    text = text.replace(/```json|```/g,'').trim();
-    const first = text.indexOf('['), last = text.lastIndexOf(']');
-    if(first<0||last<0) throw new Error('unparseable');
-    const list = JSON.parse(text.slice(first,last+1));
+async function askBatch(themes, diff, pieces, n, avoid){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      messages:[{role:'user', content: buildPrompt(themes, diff, pieces, n, avoid)}]
+    })
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data = await res.json();
+  let text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  text = text.replace(/```json|```/g,'').trim();
+  const a = text.indexOf('['), b = text.lastIndexOf(']');
+  if(a < 0 || b < 0) throw new Error('unparseable');
+  return JSON.parse(text.slice(a, b+1));
+}
 
-    let added = 0;
-    list.forEach(item => {
-      const p = newPuzzle(item);
-      if(checkPuzzle(p).ok){ S.puzzles.push(p); added++; }
-    });
-    if(!added) throw new Error('nothing usable');
-    st.className='status ok';
-    st.textContent = 'Added ' + added + (added===1?' puzzle':' puzzles') + '. Edit anything that looks off.';
-    renderDeck(); save();
-  }catch(err){
-    const pool = STOCK.filter(s => !S.puzzles.some(p=>p.answer===s.answer));
-    const pick = pool.sort(()=>Math.random()-0.5).slice(0,n);
+$('#gen').onclick = async () => {
+  const btn = $('#gen'), st = $('#genStatus');
+  addTheme($('#themeInput').value); $('#themeInput').value='';
+  if(!S.themes.length){
+    st.className='status err';
+    st.textContent='Add at least one theme first.';
+    return;
+  }
+
+  const want = S.count, diff = S.difficulty, pieces = S.pieces;
+  btn.disabled = true;
+  st.className='status busy';
+  st.textContent = 'Writing puzzles…';
+
+  // The model writes cleaner puzzles in small batches than in one long list,
+  // and each batch sees what the previous ones produced so nothing repeats.
+  const BATCH = 5;
+  let made = 0, dropped = 0, failures = 0;
+
+  for(let done = 0; done < want; done += BATCH){
+    const n = Math.min(BATCH, want - done);
+    // Rotate the theme order so later batches don't all lead with the first one.
+    const shift = (done/BATCH) % S.themes.length;
+    const themes = S.themes.slice(shift).concat(S.themes.slice(0, shift));
+    const avoid = S.puzzles.map(p => p.answer).filter(Boolean);
+
+    try{
+      const list = await askBatch(themes, diff, pieces, n, avoid);
+      list.forEach(item => {
+        const p = newPuzzle(item);
+        if(checkPuzzle(p).ok && !S.puzzles.some(q => q.answer === p.answer)){
+          S.puzzles.push(p); made++;
+        }else dropped++;
+      });
+      renderDeck();
+      st.textContent = 'Writing puzzles… ' + made + ' of ' + want;
+    }catch(err){
+      failures++;
+      if(failures >= 2) break;
+    }
+  }
+
+  if(!made){
+    const pool = STOCK.filter(s => !S.puzzles.some(p => p.answer === s.answer));
+    const pick = pool.sort(()=>Math.random()-0.5).slice(0, want);
     pick.forEach(s => S.puzzles.push(newPuzzle(s)));
     st.className='status err';
     st.textContent = pick.length
       ? "Couldn't reach the writer, so I pulled " + pick.length + ' from the built-in set instead.'
-      : "Couldn't reach the writer and the built-in set is used up. Try adding one by hand.";
-    renderDeck(); save();
-  }finally{
-    btn.disabled = false;
+      : "Couldn't reach the writer and the built-in set is used up.";
+  }else{
+    st.className = made < want ? 'status' : 'status ok';
+    st.textContent = 'Added ' + made + (made===1?' puzzle':' puzzles')
+      + (dropped ? ' — ' + dropped + " didn't spell out correctly and were dropped." : '.');
   }
+
+  renderDeck(); save();
+  btn.disabled = false;
 };
 
 $('#addPuzzle').onclick = () => { S.puzzles.push(newPuzzle()); renderDeck(); save(); };
@@ -708,18 +917,41 @@ function draw(t){
   }
 
   // --- picture cards ---
+  // Five cards in a single row would be ~110px wide on a 1080 canvas, which
+  // nobody can read in a feed. Past three, the row wraps.
   const n = p.parts.length;
+  const rows = n <= 3 ? [n] : (n === 4 ? [2,2] : [3,2]);
+  const cols = Math.max.apply(null, rows);
   const margin = W*0.07;
-  const gap = W*0.085;
-  const avail = W - margin*2 - gap*(n-1);
-  let card = avail/n;
-  card = Math.min(card, H*0.30);
-  const rowY = H*0.52;
-  const startX = (W - (card*n + gap*(n-1)))/2;
+  const gap = cols >= 3 ? W*0.06 : W*0.085;
+  const bandTop = H*0.325, bandBot = H*0.715, band = bandBot - bandTop;
+  const rowGapF = 0.36;
+  const byW = (W - margin*2 - gap*(cols-1))/cols;
+  const byH = band/(rows.length + (rows.length-1)*rowGapF);
+  const card = Math.min(byW, byH, H*0.30);
+  const rowGap = card*rowGapF;
+  const blockH = rows.length*card + (rows.length-1)*rowGap;
+  const topY = bandTop + (band - blockH)/2;
 
-  p.parts.forEach((part, i) => {
-    const x = startX + i*(card+gap);
-    const y = rowY - card/2;
+  const cells = [];
+  let k = 0;
+  rows.forEach((cnt, r) => {
+    const rowW = cnt*card + (cnt-1)*gap;
+    const sx = (W - rowW)/2;
+    for(let c = 0; c < cnt; c++){
+      cells.push({
+        x: sx + c*(card+gap),
+        y: topY + r*(card+rowGap),
+        endOfRow: c === cnt-1,
+        row: r,
+        i: k++
+      });
+    }
+  });
+
+  cells.forEach(cell => {
+    const part = p.parts[cell.i];
+    const i = cell.i, x = cell.x, y = cell.y;
 
     let sc = 1;
     if(isQuiz){
@@ -764,10 +996,17 @@ function draw(t){
     }
     ctx.restore();
 
+    // A plus sits between cards in a row; where the row wraps it drops into
+    // the gap below, so the reading order stays obvious.
     if(i < n-1){
       ctx.fillStyle = C.text; ctx.globalAlpha = .75;
-      ctx.font = '400 '+Math.round(gap*0.78)+'px Anton, Impact, sans-serif';
-      ctx.fillText('+', x + card + gap/2, rowY);
+      if(!cell.endOfRow){
+        ctx.font = '400 '+Math.round(gap*0.78)+'px Anton, Impact, sans-serif';
+        ctx.fillText('+', x + card + gap/2, y + card/2);
+      }else if(isQuiz){
+        ctx.font = '400 '+Math.round(rowGap*0.62)+'px Anton, Impact, sans-serif';
+        ctx.fillText('+', W/2, y + card + rowGap/2);
+      }
       ctx.globalAlpha = 1;
     }
   });
@@ -884,8 +1123,11 @@ function layoutSync(){
   el.textContent = total.toFixed(0)+'s';
   const note = $('#lenNote');
   if(!total){ el.className=''; note.textContent=''; }
-  else if(total < 15){ el.className='warn'; note.innerHTML='Under 15s — add a puzzle'; }
-  else if(total > 60){ el.className='warn'; note.innerHTML='Over 60s — trim it down'; }
+  else if(total < 15){ el.className='warn'; note.textContent='Under 15s — add a puzzle'; }
+  else if(total > 60){
+    el.className='warn';
+    note.textContent='Over 60s — about ' + Math.floor(60/(S.guess+S.reveal)) + ' puzzles fit';
+  }
   else { el.className=''; note.textContent='Good length for the feed'; }
   if(T > total) T = total;
   syncTime();
@@ -1098,6 +1340,8 @@ function finishRecording(){
    ============================================================ */
 $('#guessTime').oninput = e => { S.guess = +e.target.value; $('#gtVal').textContent = S.guess; layoutSync(); draw(T); save(); };
 $('#revealTime').oninput = e => { S.reveal = +e.target.value; $('#rtVal').textContent = S.reveal; layoutSync(); draw(T); save(); };
+$('#howmany').onchange = e => { S.count = +e.target.value; save(); };
+$('#pieces').onchange = e => { S.pieces = e.target.value; save(); };
 $('#headline').oninput = e => { S.headline = e.target.value; draw(T); save(); };
 $('#cta').oninput = e => { S.cta = e.target.value; draw(T); save(); };
 $('#handle').oninput = e => { S.handle = e.target.value; draw(T); save(); };
@@ -1113,6 +1357,10 @@ function chipGroup(sel, fn){
 }
 chipGroup('#aspects .chip', b => { cvs.width = S.w = +b.dataset.w; cvs.height = S.h = +b.dataset.h; });
 chipGroup('#themes .chip', b => { S.look = b.dataset.theme; });
+chipGroup('#difficulty .chip', b => {
+  S.difficulty = b.dataset.diff;
+  $('#diffHint').textContent = DIFFICULTY[S.difficulty].hint;
+});
 chipGroup('[data-sound]', b => {
   S.sound = b.dataset.sound === 'on';
   if(master) master.gain.setTargetAtTime(S.sound ? 1 : 0, AC.currentTime, 0.01);
@@ -1125,7 +1373,8 @@ async function save(){
   try{
     if(!window.storage) return;
     await window.storage.set('rebusdesk:project', JSON.stringify({
-      puzzles: S.puzzles.map(p => ({answer:p.answer, parts:p.parts.map(x=>({label:x.label, emoji:x.emoji}))})),
+      puzzles: S.puzzles.map(p => ({answer:p.answer, theme:p.theme, parts:p.parts.map(x=>({label:x.label, emoji:x.emoji}))})),
+      themes:S.themes, difficulty:S.difficulty, count:S.count, pieces:S.pieces,
       guess:S.guess, reveal:S.reveal, sound:S.sound, w:S.w, h:S.h,
       look:S.look, headline:S.headline, cta:S.cta, handle:S.handle
     }));
@@ -1138,6 +1387,10 @@ async function load(){
     if(!r || !r.value) return false;
     const d = JSON.parse(r.value);
     S.puzzles = (d.puzzles||[]).map(newPuzzle);
+    if(Array.isArray(d.themes) && d.themes.length) S.themes = d.themes;
+    S.difficulty = d.difficulty || S.difficulty;
+    S.count = d.count || S.count;
+    S.pieces = d.pieces || S.pieces;
     S.guess = d.guess ?? S.guess; S.reveal = d.reveal ?? S.reveal;
     S.sound = d.sound ?? S.sound;
     S.w = d.w || S.w; S.h = d.h || S.h;
@@ -1153,6 +1406,8 @@ async function load(){
       b.setAttribute('aria-pressed', (+b.dataset.w===S.w && +b.dataset.h===S.h) ? 'true':'false'));
     document.querySelectorAll('#themes .chip').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.theme===S.look ? 'true':'false'));
+    document.querySelectorAll('#difficulty .chip').forEach(b =>
+      b.setAttribute('aria-pressed', b.dataset.diff===S.difficulty ? 'true':'false'));
     document.querySelectorAll('[data-sound]').forEach(b =>
       b.setAttribute('aria-pressed', (b.dataset.sound==='on')===S.sound ? 'true':'false'));
     return S.puzzles.length > 0;
@@ -1163,10 +1418,21 @@ async function load(){
    Start
    ============================================================ */
 (async function start(){
+  const sel = $('#howmany');
+  for(let i=1; i<=20; i++){
+    const o = document.createElement('option');
+    o.value = i; o.textContent = i;
+    sel.appendChild(o);
+  }
+
   const restored = await load();
   if(!restored){
     STOCK.slice(0,3).forEach(s => S.puzzles.push(newPuzzle(s)));
   }
+  sel.value = S.count;
+  $('#pieces').value = S.pieces;
+  $('#diffHint').textContent = DIFFICULTY[S.difficulty].hint;
+  renderTags();
   renderDeck();
   try{ await document.fonts.ready; }catch(e){}
   draw(0);
